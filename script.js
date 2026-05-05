@@ -1,85 +1,101 @@
 // =====================================================
-// JAM TRACKER — Dev Dashboard v1.1 (CORREGIDO)
+// JAM TRACKER — Dev Dashboard v1.2 (GitHub Pages ready)
 // =====================================================
 
-// Envolvemos todo para asegurar que el DOM existe
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
+  "use strict";
 
-// NAMESPACE
-const JAM = {
+  // ---------- NAMESPACE ----------
+  const JAM = {
     activeColor: '#00ff9d',
-    activeColorLabel: 'Verde = En curso',
+    activeColorLabel: 'Verde — En curso',
     calendarYear: new Date().getFullYear(),
     calendarMonth: new Date().getMonth(), // 0-indexed
     selectedDay: null,
     editingJamId: null,
-    jamFormVisible: true,
-};
+    jamFormVisible: true
+  };
 
-// COLOR MAP
-const COLOR_MAP = {
+  // ---------- COLOR MAP ----------
+  const COLOR_MAP = {
     '#00ff9d': 'Verde — En curso',
     '#ff3e6c': 'Rojo — Deadline',
     '#ffd93d': 'Amarillo — Importante',
     '#6c63ff': 'Violeta — Planeado',
     '#00cfff': 'Azul — Reunión',
     '#ff9a3c': 'Naranja — Revisión',
-    '#ff69b4': 'Rosa — Personal',
-};
+    '#ff69b4': 'Rosa — Personal'
+  };
 
-// ============ STORAGE HELPERS ============
-function loadData(key, fallback = []) {
+  // ---------- STORAGE HELPERS ----------
+  function loadData(key, fallback = []) {
     try {
-        const raw = localStorage.getItem('jamtracker_' + key);
-        return raw ? JSON.parse(raw) : fallback;
+      const raw = localStorage.getItem('jamtracker_' + key);
+      return raw ? JSON.parse(raw) : fallback;
     } catch (e) {
-        return fallback;
+      return fallback;
     }
-}
+  }
 
-function saveData(key, data) {
+  function saveData(key, data) {
     try {
-        localStorage.setItem('jamtracker_' + key, JSON.stringify(data));
+      localStorage.setItem('jamtracker_' + key, JSON.stringify(data));
     } catch (e) {
-        showToast('Error al guardar datos', true);
+      showToast('Error al guardar datos', true);
     }
-}
+  }
 
-// ============ TOAST ============
-function showToast(msg, isError = false) {
+  // ---------- TOAST ----------
+  function showToast(msg, isError = false) {
     const toast = document.getElementById('toast');
     if (!toast) return;
     toast.textContent = msg;
     toast.className = 'toast show' + (isError ? ' danger' : '');
     clearTimeout(toast._timeout);
     toast._timeout = setTimeout(() => {
-        toast.classList.remove('show');
+      toast.classList.remove('show');
     }, 2500);
-}
+  }
 
-// ============ CLOCK (CORREGIDO) ============
-function updateClock() {
-    // Obtener hora actual en zona horaria de Bolivia (UTC-4) de manera fiable
-    const optionsDate = { timeZone: 'America/La_Paz', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' };
-    const optionsTime = { timeZone: 'America/La_Paz', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
-
-    const dateStr = new Date().toLocaleDateString('es-BO', optionsDate).toUpperCase();
-    const timeStr = new Date().toLocaleTimeString('es-BO', optionsTime);
-
-    document.getElementById('live-date').textContent = dateStr;
-    document.getElementById('live-time').textContent = timeStr;
-
-    // Actualizar countdowns si estamos en la tab de jams
-    if (document.getElementById('tab-jams').classList.contains('active')) {
-        renderJams();
+  // ---------- RELOJ (con fallback por si no soporta timeZone) ----------
+  function getBoliviaDate() {
+    try {
+      // Intenta con timeZone (estándar moderno)
+      const d = new Date();
+      const str = d.toLocaleString('es-BO', { timeZone: 'America/La_Paz', hour12: false });
+      return new Date(str);
+    } catch (e) {
+      // Fallback manual UTC-4
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      return new Date(utc + (3600000 * -4));
     }
-}
+  }
 
-setInterval(updateClock, 1000);
-updateClock();
+  function updateClock() {
+    const now = getBoliviaDate();
+    const days = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SAB'];
+    const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
-// ============ TABS ============
-function switchTab(tabName) {
+    const dayName = days[now.getDay()];
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+    const time = now.toTimeString().split(' ')[0]; // HH:MM:SS
+
+    document.getElementById('live-date').textContent = `${dayName} ${day}/${month}/${year}`;
+    document.getElementById('live-time').textContent = time;
+
+    if (document.getElementById('tab-jams').classList.contains('active')) {
+      renderJams();
+    }
+  }
+
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ---------- PESTAÑAS ----------
+  function switchTab(tabName) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
@@ -88,93 +104,87 @@ function switchTab(tabName) {
     if (btn) btn.classList.add('active');
     if (content) content.classList.add('active');
 
-    // Refrescar contenido al cambiar de pestaña
     if (tabName === 'calendar') renderCalendar();
     if (tabName === 'jams') renderJams();
     if (tabName === 'tasks') renderTasks();
     if (tabName === 'notes') renderNotes();
     if (tabName === 'stats') renderStats();
-}
+  }
 
-// Asignar eventos a los botones de tabs (ya existen en el DOM)
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        switchTab(btn.dataset.tab);
-    });
-});
+  // Eventos de botones de tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
 
-// ============ COLOR PICKER ============
-document.getElementById('color-palette').addEventListener('click', (e) => {
+  // ---------- COLOR PICKER ----------
+  document.getElementById('color-palette').addEventListener('click', (e) => {
     const btn = e.target.closest('.color-pick-btn');
     if (!btn) return;
-
     document.querySelectorAll('.color-pick-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     JAM.activeColor = btn.dataset.color;
     JAM.activeColorLabel = COLOR_MAP[btn.dataset.color] || '';
     document.getElementById('color-label').textContent = JAM.activeColorLabel;
     renderCalendar();
-});
+  });
 
-// ============ CALENDAR ============
-function getCalendarEvents() {
+  // ---------- CALENDARIO ----------
+  function getCalendarEvents() {
     return loadData('events', []);
-}
+  }
 
-function addCalendarEvent(dateStr, color, label) {
+  function addCalendarEvent(dateStr, color, label) {
     const events = getCalendarEvents();
     events.push({ id: Date.now(), date: dateStr, color, label });
     saveData('events', events);
     renderCalendar();
-    if (JAM.selectedDay === dateStr) {
-        showDayEvents(dateStr);
-    }
+    if (JAM.selectedDay === dateStr) showDayEvents(dateStr);
     showToast('Evento añadido al calendario');
-}
+  }
 
-function removeCalendarEvent(eventId) {
+  function removeCalendarEvent(eventId) {
     let events = getCalendarEvents();
     events = events.filter(e => e.id !== eventId);
     saveData('events', events);
     renderCalendar();
     if (JAM.selectedDay) showDayEvents(JAM.selectedDay);
     showToast('Evento eliminado', true);
-}
+  }
 
-function getEventsForDate(dateStr) {
+  function getEventsForDate(dateStr) {
     return getCalendarEvents().filter(e => e.date === dateStr);
-}
+  }
 
-function changeMonth(delta) {
+  function changeMonth(delta) {
     JAM.calendarMonth += delta;
     if (JAM.calendarMonth < 0) {
-        JAM.calendarMonth = 11;
-        JAM.calendarYear--;
+      JAM.calendarMonth = 11;
+      JAM.calendarYear--;
     } else if (JAM.calendarMonth > 11) {
-        JAM.calendarMonth = 0;
-        JAM.calendarYear++;
+      JAM.calendarMonth = 0;
+      JAM.calendarYear++;
     }
     JAM.selectedDay = null;
     document.getElementById('cal-day-events').style.display = 'none';
     renderCalendar();
-}
+  }
 
-document.getElementById('cal-prev').addEventListener('click', () => changeMonth(-1));
-document.getElementById('cal-next').addEventListener('click', () => changeMonth(1));
+  document.getElementById('cal-prev').addEventListener('click', () => changeMonth(-1));
+  document.getElementById('cal-next').addEventListener('click', () => changeMonth(1));
 
-function renderCalendar() {
+  function renderCalendar() {
     const year = JAM.calendarYear;
     const month = JAM.calendarMonth;
-
     const monthNames = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
                         'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
     document.getElementById('cal-month-label').textContent = monthNames[month] + ' ' + year;
 
-    const firstDay = new Date(year, month, 1).getDay(); // 0=Dom
+    const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-    // Usamos la misma zona para comparar (evitamos desfase)
-    const todayStr = new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+    const today = getBoliviaDate();
+    const todayStr = today.getFullYear() + '-' +
+                     String(today.getMonth() + 1).padStart(2,'0') + '-' +
+                     String(today.getDate()).padStart(2,'0');
 
     const events = getCalendarEvents();
     const grid = document.getElementById('cal-grid');
@@ -182,84 +192,78 @@ function renderCalendar() {
 
     const dayLabels = ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
     dayLabels.forEach(d => {
-        const lbl = document.createElement('div');
-        lbl.className = 'cal-day-label';
-        lbl.textContent = d;
-        grid.appendChild(lbl);
+      const lbl = document.createElement('div');
+      lbl.className = 'cal-day-label';
+      lbl.textContent = d;
+      grid.appendChild(lbl);
     });
 
     for (let i = 0; i < firstDay; i++) {
-        const empty = document.createElement('div');
-        empty.className = 'cal-day empty';
-        grid.appendChild(empty);
+      const empty = document.createElement('div');
+      empty.className = 'cal-day empty';
+      grid.appendChild(empty);
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'cal-day';
-        dayDiv.textContent = d;
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'cal-day';
+      dayDiv.textContent = d;
+      const dateStr = year + '-' + String(month + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
 
-        const dateStr = year + '-' + String(month + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      if (dateStr === todayStr) dayDiv.classList.add('today');
 
-        if (dateStr === todayStr) {
-            dayDiv.classList.add('today');
-        }
-
-        const dayEvents = events.filter(e => e.date === dateStr);
-        if (dayEvents.length > 0) {
-            const dotsContainer = document.createElement('div');
-            dotsContainer.className = 'day-dots';
-            const uniqueColors = [...new Set(dayEvents.map(e => e.color))];
-            uniqueColors.slice(0, 4).forEach(color => {
-                const dot = document.createElement('span');
-                dot.className = 'day-dot';
-                dot.style.backgroundColor = color;
-                dotsContainer.appendChild(dot);
-            });
-            dayDiv.appendChild(dotsContainer);
-        }
-
-        dayDiv.addEventListener('click', () => {
-            JAM.selectedDay = dateStr;
-            showDayEvents(dateStr);
+      const dayEvents = events.filter(e => e.date === dateStr);
+      if (dayEvents.length > 0) {
+        const dotsContainer = document.createElement('div');
+        dotsContainer.className = 'day-dots';
+        const uniqueColors = [...new Set(dayEvents.map(e => e.color))];
+        uniqueColors.slice(0, 4).forEach(color => {
+          const dot = document.createElement('span');
+          dot.className = 'day-dot';
+          dot.style.backgroundColor = color;
+          dotsContainer.appendChild(dot);
         });
+        dayDiv.appendChild(dotsContainer);
+      }
 
-        grid.appendChild(dayDiv);
+      dayDiv.addEventListener('click', () => {
+        JAM.selectedDay = dateStr;
+        showDayEvents(dateStr);
+      });
+      grid.appendChild(dayDiv);
     }
-}
+  }
 
-function showDayEvents(dateStr) {
+  function showDayEvents(dateStr) {
     const section = document.getElementById('cal-day-events');
     const title = document.getElementById('cal-day-title');
     const list = document.getElementById('cal-day-events-list');
-
     section.style.display = 'block';
     const [y, m, d] = dateStr.split('-');
     title.textContent = `EVENTOS DEL ${d}/${m}/${y}`;
-
     const events = getEventsForDate(dateStr);
     list.innerHTML = '';
 
     if (events.length === 0) {
-        list.innerHTML = '<p style="color:var(--text2);font-size:12px;">Sin eventos este día.</p>';
+      list.innerHTML = '<p style="color:var(--text2);font-size:12px;">Sin eventos este día.</p>';
     } else {
-        events.forEach(ev => {
-            const item = document.createElement('div');
-            item.style.cssText = `
-                display:flex;align-items:center;justify-content:space-between;
-                padding:8px;margin-bottom:4px;background:var(--bg2);
-                border-left:3px solid ${ev.color};font-size:12px;
-            `;
-            item.innerHTML = `
-                <span><span style="display:inline-block;width:8px;height:8px;background:${ev.color};margin-right:8px;border-radius:50%;"></span>${ev.label || 'Evento'}</span>
-                <button class="btn btn-danger btn-sm" data-event-id="${ev.id}" style="font-size:6px;padding:2px 6px;">X</button>
-            `;
-            item.querySelector('button').addEventListener('click', (e) => {
-                e.stopPropagation();
-                removeCalendarEvent(ev.id);
-            });
-            list.appendChild(item);
+      events.forEach(ev => {
+        const item = document.createElement('div');
+        item.style.cssText = `
+          display:flex;align-items:center;justify-content:space-between;
+          padding:8px;margin-bottom:4px;background:var(--bg2);
+          border-left:3px solid ${ev.color};font-size:12px;
+        `;
+        item.innerHTML = `
+          <span><span style="display:inline-block;width:8px;height:8px;background:${ev.color};margin-right:8px;border-radius:50%;"></span>${ev.label || 'Evento'}</span>
+          <button class="btn btn-danger btn-sm" data-event-id="${ev.id}" style="font-size:6px;padding:2px 6px;">X</button>
+        `;
+        item.querySelector('button').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeCalendarEvent(ev.id);
         });
+        list.appendChild(item);
+      });
     }
 
     const addDiv = document.createElement('div');
@@ -272,53 +276,53 @@ function showDayEvents(dateStr) {
     addBtn.className = 'btn btn-primary btn-sm';
     addBtn.textContent = '+ AÑADIR';
     addBtn.addEventListener('click', () => {
-        const label = input.value.trim();
-        if (!label) { showToast('Escribe un nombre para el evento', true); return; }
-        addCalendarEvent(dateStr, JAM.activeColor, label);
+      const label = input.value.trim();
+      if (!label) { showToast('Escribe un nombre para el evento', true); return; }
+      addCalendarEvent(dateStr, JAM.activeColor, label);
     });
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') addBtn.click();
+      if (e.key === 'Enter') addBtn.click();
     });
     addDiv.appendChild(input);
     addDiv.appendChild(addBtn);
     list.appendChild(addDiv);
-}
+  }
 
-// ============ JAMS ============
-function getJams() {
+  // ---------- JAMS ----------
+  function getJams() {
     return loadData('jams', []);
-}
+  }
 
-function saveJams(jams) {
+  function saveJams(jams) {
     saveData('jams', jams);
     syncJamEventsToCalendar(jams);
-}
+  }
 
-function syncJamEventsToCalendar(jams) {
+  function syncJamEventsToCalendar(jams) {
     let events = getCalendarEvents();
     events = events.filter(e => !String(e.id).startsWith('jam_'));
     jams.forEach(jam => {
-        if (jam.start) {
-            events.push({
-                id: 'jam_start_' + jam.id,
-                date: jam.start,
-                color: '#6c63ff',
-                label: '🚀 Inicio: ' + jam.name
-            });
-        }
-        if (jam.end) {
-            events.push({
-                id: 'jam_dead_' + jam.id,
-                date: jam.end,
-                color: '#ff3e6c',
-                label: '⏰ Deadline: ' + jam.name
-            });
-        }
+      if (jam.start) {
+        events.push({
+          id: 'jam_start_' + jam.id,
+          date: jam.start,
+          color: '#6c63ff',
+          label: '🚀 Inicio: ' + jam.name
+        });
+      }
+      if (jam.end) {
+        events.push({
+          id: 'jam_dead_' + jam.id,
+          date: jam.end,
+          color: '#ff3e6c',
+          label: '⏰ Deadline: ' + jam.name
+        });
+      }
     });
     saveData('events', events);
-}
+  }
 
-function addJam() {
+  function addJam() {
     const name = document.getElementById('jam-name').value.trim();
     const start = document.getElementById('jam-start').value;
     const end = document.getElementById('jam-end').value;
@@ -333,30 +337,29 @@ function addJam() {
     const jams = getJams();
 
     if (JAM.editingJamId) {
-        const idx = jams.findIndex(j => j.id === JAM.editingJamId);
-        if (idx >= 0) {
-            jams[idx] = { ...jams[idx], name, start, end, link, theme, notes };
-        }
-        JAM.editingJamId = null;
-        document.getElementById('btn-add-jam').textContent = '+ AGREGAR JAM';
-        showToast('Jam actualizada');
+      const idx = jams.findIndex(j => j.id === JAM.editingJamId);
+      if (idx >= 0) {
+        jams[idx] = { ...jams[idx], name, start, end, link, theme, notes };
+      }
+      JAM.editingJamId = null;
+      document.getElementById('btn-add-jam').textContent = '+ AGREGAR JAM';
+      showToast('Jam actualizada');
     } else {
-        const jam = {
-            id: Date.now(),
-            name, start, end, link, theme, notes,
-            createdAt: new Date().toISOString()
-        };
-        jams.push(jam);
-        showToast('Jam agregada');
+      jams.push({
+        id: Date.now(),
+        name, start, end, link, theme, notes,
+        createdAt: new Date().toISOString()
+      });
+      showToast('Jam agregada');
     }
 
     saveJams(jams);
     clearJamForm();
     renderJams();
     renderCalendar();
-}
+  }
 
-function clearJamForm() {
+  function clearJamForm() {
     document.getElementById('jam-name').value = '';
     document.getElementById('jam-start').value = '';
     document.getElementById('jam-end').value = '';
@@ -365,13 +368,12 @@ function clearJamForm() {
     document.getElementById('jam-notes').value = '';
     JAM.editingJamId = null;
     document.getElementById('btn-add-jam').textContent = '+ AGREGAR JAM';
-}
+  }
 
-function editJam(jamId) {
+  function editJam(jamId) {
     const jams = getJams();
     const jam = jams.find(j => j.id === jamId);
     if (!jam) return;
-
     document.getElementById('jam-name').value = jam.name;
     document.getElementById('jam-start').value = jam.start;
     document.getElementById('jam-end').value = jam.end;
@@ -380,12 +382,11 @@ function editJam(jamId) {
     document.getElementById('jam-notes').value = jam.notes || '';
     JAM.editingJamId = jamId;
     document.getElementById('btn-add-jam').textContent = '✎ ACTUALIZAR JAM';
-
     if (!JAM.jamFormVisible) toggleJamForm();
     document.getElementById('jam-name').focus();
-}
+  }
 
-function deleteJam(jamId) {
+  function deleteJam(jamId) {
     if (!confirm('¿Eliminar esta jam? Esta acción no se puede deshacer.')) return;
     let jams = getJams();
     jams = jams.filter(j => j.id !== jamId);
@@ -393,30 +394,23 @@ function deleteJam(jamId) {
     renderJams();
     renderCalendar();
     showToast('Jam eliminada', true);
-}
+  }
 
-function toggleJamForm() {
+  function toggleJamForm() {
     JAM.jamFormVisible = !JAM.jamFormVisible;
     const wrapper = document.getElementById('jam-form-wrapper');
     const btn = document.getElementById('btn-toggle-jam-form');
-    if (JAM.jamFormVisible) {
-        wrapper.style.display = 'block';
-        btn.textContent = '▲ CERRAR';
-    } else {
-        wrapper.style.display = 'none';
-        btn.textContent = '▼ ABRIR';
-    }
-}
+    wrapper.style.display = JAM.jamFormVisible ? 'block' : 'none';
+    btn.textContent = JAM.jamFormVisible ? '▲ CERRAR' : '▼ ABRIR';
+  }
 
-document.getElementById('btn-toggle-jam-form').addEventListener('click', toggleJamForm);
-document.getElementById('btn-add-jam').addEventListener('click', addJam);
+  document.getElementById('btn-toggle-jam-form').addEventListener('click', toggleJamForm);
+  document.getElementById('btn-add-jam').addEventListener('click', addJam);
 
-function getJamStatus(start, end) {
-    // Usamos fechas en zona Bolivia para comparar correctamente
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+  function getJamStatus(start, end) {
+    const now = getBoliviaDate();
     const startDate = new Date(start + 'T00:00:00-04:00');
     const endDate = new Date(end + 'T00:00:00-04:00');
-
     if (now > endDate) return 'done';
     const diffDays = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
     if (diffDays <= 1) return 'urgent';
@@ -424,31 +418,28 @@ function getJamStatus(start, end) {
     if (now >= startDate && now <= endDate) return 'active';
     if (now < startDate) return 'upcoming';
     return 'done';
-}
+  }
 
-function getCountdownText(start, end) {
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+  function getCountdownText(start, end) {
+    const now = getBoliviaDate();
     const startDate = new Date(start + 'T00:00:00-04:00');
     const endDate = new Date(end + 'T00:00:00-04:00');
-
-    if (now > endDate) {
-        return 'FINALIZADA';
-    }
+    if (now > endDate) return 'FINALIZADA';
     if (now < startDate) {
-        const diff = startDate - now;
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        return `EMPIEZA EN: ${days}D ${hours}H`;
+      const diff = startDate - now;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      return `EMPIEZA EN: ${days}D ${hours}H`;
     }
     const diff = endDate - now;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `⏳ ${days}D ${hours}H ${mins}MIN RESTANTES`;
-}
+  }
 
-function getProgressPercent(start, end) {
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+  function getProgressPercent(start, end) {
+    const now = getBoliviaDate();
     const startDate = new Date(start + 'T00:00:00-04:00');
     const endDate = new Date(end + 'T00:00:00-04:00');
     if (now < startDate) return 0;
@@ -456,309 +447,217 @@ function getProgressPercent(start, end) {
     const total = endDate - startDate;
     const elapsed = now - startDate;
     return Math.min(100, Math.round((elapsed / total) * 100));
-}
+  }
 
-function renderJams() {
+  function renderJams() {
     const jams = getJams();
     const list = document.getElementById('jam-list');
-
     if (jams.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <span class="pixel-art">🎮</span>
-                <p>NO HAY JAMS REGISTRADAS<br>¡AGREGA TU PRIMERA GAME JAM!</p>
-            </div>
-        `;
-        return;
+      list.innerHTML = `<div class="empty-state"><span class="pixel-art">🎮</span><p>NO HAY JAMS REGISTRADAS<br>¡AGREGA TU PRIMERA GAME JAM!</p></div>`;
+      return;
     }
 
     const sorted = [...jams].sort((a, b) => {
-        const statusOrder = { active: 0, urgent: 0, warning: 1, upcoming: 2, done: 3 };
-        const sa = getJamStatus(a.start, a.end);
-        const sb = getJamStatus(b.start, b.end);
-        return (statusOrder[sa] || 0) - (statusOrder[sb] || 0);
+      const order = { active:0, urgent:0, warning:1, upcoming:2, done:3 };
+      return (order[getJamStatus(a.start, a.end)] || 0) - (order[getJamStatus(b.start, b.end)] || 0);
     });
 
     list.innerHTML = sorted.map(jam => {
-        const status = getJamStatus(jam.start, jam.end);
-        const countdown = getCountdownText(jam.start, jam.end);
-        const progress = getProgressPercent(jam.start, jam.end);
-        const tags = [];
-        if (jam.link) tags.push('🔗 LINK');
-        if (jam.theme) tags.push('🎯 ' + jam.theme.toUpperCase());
+      const status = getJamStatus(jam.start, jam.end);
+      const countdown = getCountdownText(jam.start, jam.end);
+      const progress = getProgressPercent(jam.start, jam.end);
+      const tags = jam.theme ? [`🎯 ${jam.theme.toUpperCase()}`] : [];
+      if (jam.link) tags.push('🔗 LINK');
 
-        let badgeClass = 'badge-active';
-        let badgeText = 'ACTIVA';
-        if (status === 'done') { badgeClass = 'badge-done'; badgeText = 'FINALIZADA'; }
-        if (status === 'urgent') { badgeClass = 'badge-urgent'; badgeText = '¡URGENTE!'; }
-        if (status === 'upcoming') { badgeClass = 'badge'; badgeText = 'PRÓXIMA'; }
+      const badge = status === 'done' ? 'badge-done' : (status === 'urgent' ? 'badge-urgent' : 'badge-active');
+      const badgeText = status === 'done' ? 'FINALIZADA' : (status === 'urgent' ? '¡URGENTE!' : (status === 'upcoming' ? 'PRÓXIMA' : 'ACTIVA'));
 
-        return `
-            <div class="jam-card ${status === 'urgent' ? 'urgent' : ''} ${status === 'warning' ? 'warning' : ''} ${status === 'done' ? 'done' : ''}">
-                <div class="jam-card-header">
-                    <div class="jam-name">${escapeHTML(jam.name)}</div>
-                    <div class="jam-actions">
-                        <button class="btn btn-ghost btn-sm" onclick="editJam(${jam.id})" title="Editar">✎</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteJam(${jam.id})" title="Eliminar">✕</button>
-                    </div>
-                </div>
-                <div class="jam-meta">
-                    📅 ${formatDateShort(jam.start)} → ${formatDateShort(jam.end)} &nbsp; <span class="badge ${badgeClass}">${badgeText}</span>
-                </div>
-                ${jam.theme ? `<div class="jam-meta">🎯 Tema: <strong>${escapeHTML(jam.theme)}</strong></div>` : ''}
-                ${jam.link ? `<div class="jam-meta">🔗 <a href="${escapeHTML(jam.link)}" target="_blank" style="color:var(--accent4);">${escapeHTML(jam.link)}</a></div>` : ''}
-                ${jam.notes ? `<div class="jam-notes-preview">💡 ${escapeHTML(jam.notes.substring(0, 80))}${jam.notes.length > 80 ? '...' : ''}</div>` : ''}
-                <div class="jam-countdown ${status === 'urgent' ? 'urgent' : ''} ${status === 'warning' ? 'warning' : ''} ${status === 'done' ? 'done' : ''}">${countdown}</div>
-                <div class="jam-progress">
-                    <div class="jam-progress-bar" style="width:${progress}%;${status === 'urgent' ? 'background:#ff3e6c;' : ''}${status === 'done' ? 'background:#7a7a9a;' : ''}"></div>
-                </div>
-                ${tags.length > 0 ? `<div class="jam-tags">${tags.map(t => `<span class="jam-tag">${t}</span>`).join('')}</div>` : ''}
+      return `
+        <div class="jam-card ${status}">
+          <div class="jam-card-header">
+            <div class="jam-name">${escapeHTML(jam.name)}</div>
+            <div class="jam-actions">
+              <button class="btn btn-ghost btn-sm" onclick="editJam(${jam.id})">✎</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteJam(${jam.id})">✕</button>
             </div>
-        `;
+          </div>
+          <div class="jam-meta">📅 ${formatDate(jam.start)} → ${formatDate(jam.end)} <span class="badge ${badge}">${badgeText}</span></div>
+          ${jam.theme ? `<div class="jam-meta">🎯 Tema: <strong>${escapeHTML(jam.theme)}</strong></div>` : ''}
+          ${jam.link ? `<div class="jam-meta">🔗 <a href="${escapeHTML(jam.link)}" target="_blank" style="color:var(--accent4);">${escapeHTML(jam.link)}</a></div>` : ''}
+          ${jam.notes ? `<div class="jam-notes-preview">💡 ${escapeHTML(jam.notes.substring(0,80))}${jam.notes.length>80?'...':''}</div>` : ''}
+          <div class="jam-countdown ${status}">${countdown}</div>
+          <div class="jam-progress"><div class="jam-progress-bar" style="width:${progress}%;${status==='urgent'?'background:#ff3e6c;':''}${status==='done'?'background:#7a7a9a;':''}"></div></div>
+          ${tags.length ? `<div class="jam-tags">${tags.map(t=>`<span class="jam-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>
+      `;
     }).join('');
-}
+  }
 
-function formatDateShort(dateStr) {
+  function formatDate(dateStr) {
     if (!dateStr) return '--';
-    const parts = dateStr.split('-');
-    return parts[2] + '/' + parts[1] + '/' + parts[0].slice(2);
-}
+    const [y,m,d] = dateStr.split('-');
+    return `${d}/${m}/${y.slice(2)}`;
+  }
 
-function escapeHTML(str) {
+  function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
-}
+  }
 
-// ============ TASKS ============
-function getTasks() {
-    return loadData('tasks', []);
-}
+  // ---------- TASKS ----------
+  function getTasks() { return loadData('tasks', []); }
+  function saveTasks(tasks) { saveData('tasks', tasks); }
 
-function saveTasks(tasks) {
-    saveData('tasks', tasks);
-}
-
-function addTask() {
+  function addTask() {
     const input = document.getElementById('task-input');
     const text = input.value.trim();
     if (!text) { showToast('Escribe una tarea', true); return; }
-
     const tasks = getTasks();
     tasks.push({ id: Date.now(), text, done: false, createdAt: new Date().toISOString() });
     saveTasks(tasks);
     input.value = '';
     renderTasks();
     showToast('Tarea añadida');
-}
+  }
 
-function toggleTask(taskId) {
+  function toggleTask(id) {
     const tasks = getTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-        task.done = !task.done;
-        saveTasks(tasks);
-    }
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; saveTasks(tasks); }
     renderTasks();
-}
+  }
 
-function deleteTask(taskId) {
+  function deleteTask(id) {
     let tasks = getTasks();
-    tasks = tasks.filter(t => t.id !== taskId);
+    tasks = tasks.filter(t => t.id !== id);
     saveTasks(tasks);
     renderTasks();
     showToast('Tarea eliminada', true);
-}
+  }
 
-document.getElementById('btn-add-task').addEventListener('click', addTask);
-document.getElementById('task-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addTask();
-});
+  document.getElementById('btn-add-task').addEventListener('click', addTask);
+  document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
-function renderTasks() {
+  function renderTasks() {
     const tasks = getTasks();
     const list = document.getElementById('task-list');
-
-    if (tasks.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <span class="pixel-art">✅</span>
-                <p>NO HAY TAREAS<br>¡AGREGA TAREAS PENDIENTES!</p>
-            </div>
-        `;
-        return;
+    if (!tasks.length) {
+      list.innerHTML = `<div class="empty-state"><span class="pixel-art">✅</span><p>NO HAY TAREAS<br>¡AGREGA TAREAS PENDIENTES!</p></div>`;
+      return;
     }
-
-    const sorted = [...tasks].sort((a, b) => a.done - b.done);
-
-    list.innerHTML = sorted.map(task => `
-        <li class="${task.done ? 'checked-item' : ''}">
-            <div class="check-box ${task.done ? 'checked' : ''}" data-task-id="${task.id}"></div>
-            <span style="flex:1;">${escapeHTML(task.text)}</span>
-            <button class="task-delete-btn" data-task-id="${task.id}">✕</button>
-        </li>
+    const sorted = [...tasks].sort((a,b) => a.done - b.done);
+    list.innerHTML = sorted.map(t => `
+      <li class="${t.done ? 'checked-item' : ''}">
+        <div class="check-box ${t.done ? 'checked' : ''}" data-task-id="${t.id}"></div>
+        <span style="flex:1;">${escapeHTML(t.text)}</span>
+        <button class="task-delete-btn" data-task-id="${t.id}">✕</button>
+      </li>
     `).join('');
 
     list.querySelectorAll('.check-box').forEach(box => {
-        box.addEventListener('click', () => toggleTask(Number(box.dataset.taskId)));
+      box.addEventListener('click', () => toggleTask(Number(box.dataset.taskId)));
     });
     list.querySelectorAll('.task-delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => deleteTask(Number(btn.dataset.taskId)));
+      btn.addEventListener('click', () => deleteTask(Number(btn.dataset.taskId)));
     });
-}
+  }
 
-// ============ NOTES ============
-function getNotes() {
-    return loadData('notes', []);
-}
+  // ---------- NOTES ----------
+  function getNotes() { return loadData('notes', []); }
+  function saveNotes(notes) { saveData('notes', notes); }
 
-function saveNotes(notes) {
-    saveData('notes', notes);
-}
-
-function addNote() {
+  function addNote() {
     const input = document.getElementById('note-input');
     const text = input.value.trim();
     if (!text) { showToast('Escribe una nota', true); return; }
-
     const notes = getNotes();
     notes.unshift({ id: Date.now(), text, createdAt: new Date().toISOString() });
     saveNotes(notes);
     input.value = '';
     renderNotes();
     showToast('Nota guardada');
-}
+  }
 
-function deleteNote(noteId) {
+  function deleteNote(id) {
     let notes = getNotes();
-    notes = notes.filter(n => n.id !== noteId);
+    notes = notes.filter(n => n.id !== id);
     saveNotes(notes);
     renderNotes();
     showToast('Nota eliminada', true);
-}
+  }
 
-document.getElementById('btn-add-note').addEventListener('click', addNote);
-document.getElementById('note-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addNote();
-});
+  document.getElementById('btn-add-note').addEventListener('click', addNote);
+  document.getElementById('note-input').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
 
-function renderNotes() {
+  function renderNotes() {
     const notes = getNotes();
     const list = document.getElementById('notes-list');
-
-    if (notes.length === 0) {
-        list.innerHTML = `
-            <div class="empty-state">
-                <span class="pixel-art">📝</span>
-                <p>NO HAY NOTAS<br>¡ESCRIBE IDEAS RÁPIDAS!</p>
-            </div>
-        `;
-        return;
+    if (!notes.length) {
+      list.innerHTML = `<div class="empty-state"><span class="pixel-art">📝</span><p>NO HAY NOTAS<br>¡ESCRIBE IDEAS RÁPIDAS!</p></div>`;
+      return;
     }
-
-    list.innerHTML = notes.map(note => {
-        const date = new Date(note.createdAt);
-        const dateStr = date.toLocaleDateString('es-BO', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-        return `
-            <div class="note-card">
-                <div class="note-date">📌 ${dateStr}</div>
-                <div class="note-text">${escapeHTML(note.text)}</div>
-                <div class="note-actions">
-                    <button class="btn btn-danger btn-sm" onclick="deleteNote(${note.id})" style="font-size:6px;">ELIMINAR</button>
-                </div>
-            </div>
-        `;
+    list.innerHTML = notes.map(n => {
+      const d = new Date(n.createdAt);
+      const ds = d.toLocaleDateString('es-BO', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div class="note-card">
+        <div class="note-date">📌 ${ds}</div>
+        <div class="note-text">${escapeHTML(n.text)}</div>
+        <div class="note-actions">
+          <button class="btn btn-danger btn-sm" onclick="deleteNote(${n.id})" style="font-size:6px;">ELIMINAR</button>
+        </div>
+      </div>`;
     }).join('');
-}
+  }
 
-// ============ STATS ============
-function renderStats() {
+  // ---------- STATS ----------
+  function renderStats() {
     const jams = getJams();
     const tasks = getTasks();
+    const active = jams.filter(j => getJamStatus(j.start, j.end) !== 'done').length;
+    const totalJ = jams.length;
+    const doneT = tasks.filter(t => t.done).length;
+    const totalT = tasks.length;
 
-    const activeJams = jams.filter(j => {
-        const status = getJamStatus(j.start, j.end);
-        return status === 'active' || status === 'urgent' || status === 'warning' || status === 'upcoming';
-    }).length;
-    const totalJams = jams.length;
-    const tasksDone = tasks.filter(t => t.done).length;
-    const totalTasks = tasks.length;
+    document.getElementById('stat-active-jams').textContent = active;
+    document.getElementById('stat-total-jams').textContent = totalJ;
+    document.getElementById('stat-tasks-done').textContent = doneT;
+    document.getElementById('stat-total-tasks').textContent = totalT;
 
-    document.getElementById('stat-active-jams').textContent = activeJams;
-    document.getElementById('stat-total-jams').textContent = totalJams;
-    document.getElementById('stat-tasks-done').textContent = tasksDone;
-    document.getElementById('stat-total-tasks').textContent = totalTasks;
-
-    const upcoming = jams
-        .filter(j => {
-            const status = getJamStatus(j.start, j.end);
-            return status !== 'done';
-        })
-        .sort((a, b) => new Date(a.end) - new Date(b.end))
-        .slice(0, 5);
-
+    const upcoming = jams.filter(j => getJamStatus(j.start, j.end) !== 'done')
+                         .sort((a,b) => new Date(a.end) - new Date(b.end))
+                         .slice(0,5);
     const container = document.getElementById('upcoming-deadlines');
-    if (upcoming.length === 0) {
-        container.innerHTML = '<p style="color:var(--text2);font-size:12px;">No hay deadlines pendientes.</p>';
-    } else {
-        container.innerHTML = upcoming.map(jam => {
-            const status = getJamStatus(jam.start, jam.end);
-            const countdown = getCountdownText(jam.start, jam.end);
-            return `
-                <div class="jam-card ${status === 'urgent' ? 'urgent' : ''} ${status === 'warning' ? 'warning' : ''}">
-                    <div class="jam-name" style="font-size:7px;">${escapeHTML(jam.name)}</div>
-                    <div class="jam-countdown ${status === 'urgent' ? 'urgent' : ''}" style="font-size:6px;">${countdown}</div>
-                </div>
-            `;
-        }).join('');
-    }
-}
+    container.innerHTML = upcoming.length ? upcoming.map(j => {
+      const st = getJamStatus(j.start, j.end);
+      return `<div class="jam-card ${st}">
+        <div class="jam-name" style="font-size:7px;">${escapeHTML(j.name)}</div>
+        <div class="jam-countdown ${st}" style="font-size:6px;">${getCountdownText(j.start, j.end)}</div>
+      </div>`;
+    }).join('') : '<p style="color:var(--text2);font-size:12px;">No hay deadlines pendientes.</p>';
+  }
 
-// ============ MODAL (básico por si se necesita) ============
-function openModal(contentHTML) {
-    const overlay = document.getElementById('modal-overlay');
-    const content = document.getElementById('modal-content');
-    content.innerHTML = `
-        <button class="modal-close" id="modal-close-btn">✕ CERRAR</button>
-        ${contentHTML}
-    `;
-    overlay.classList.add('open');
-    document.getElementById('modal-close-btn').addEventListener('click', closeModal);
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeModal();
-    });
-}
-
-function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('open');
-}
-
-// ============ INICIALIZACIÓN ============
-function init() {
+  // ---------- INICIALIZACIÓN ----------
+  function init() {
     renderCalendar();
     renderJams();
     renderTasks();
     renderNotes();
     renderStats();
-
     syncJamEventsToCalendar(getJams());
     renderCalendar();
-}
+  }
 
-init();
+  // Exponer funciones globales
+  window.switchTab = switchTab;
+  window.editJam = editJam;
+  window.deleteJam = deleteJam;
+  window.deleteNote = deleteNote;
+  window.toggleJamForm = toggleJamForm;
+  window.changeMonth = changeMonth;
+  window.addTask = addTask;
+  window.addNote = addNote;
+  window.addJam = addJam;
 
-// Exponer funciones globales necesarias para atributos onclick inline
-window.editJam = editJam;
-window.deleteJam = deleteJam;
-window.deleteNote = deleteNote;
-window.switchTab = switchTab;
-window.toggleJamForm = toggleJamForm;
-window.changeMonth = changeMonth;
-window.addTask = addTask;
-window.addNote = addNote;
-window.addJam = addJam;
-
-}); // FIN DOMContentLoaded
+  init();
+})();
