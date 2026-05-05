@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>JAM TRACKER — Dev Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+    <div class="logo">JAM<br><span>TRACKER</span><br>v1.1</div>
+    <div class="clock-widget">
+        <div id="live-date">---</div>
+        <div class="time-live" id="live-time">--:--:--</div>
+        <div id="live-tz">UTC-4 BOL</div>
+    </div>
+</header>
+
+<!-- TABS -->
+<nav class="tabs">
+    <button class="tab-btn active" data-tab="calendar">📅 CAL</button>
+    <button class="tab-btn" data-tab="jams">🎮 JAMS</button>
+    <button class="tab-btn" data-tab="tasks">✅ TASKS</button>
+    <button class="tab-btn" data-tab="notes">📝 NOTAS</button>
+    <button class="tab-btn" data-tab="stats">📊 STATS</button>
+</nav>
+
+<main>
+
+<!-- ===== CALENDAR TAB ===== -->
+<section class="tab-content active" id="tab-calendar">
+    <div class="sec-title"><span class="dot"></span> CALENDARIO</div>
+
+    <div style="margin-bottom:12px;">
+        <div class="field-label">COLOR ACTIVO:</div>
+        <div class="color-row" id="color-palette">
+            <button class="color-pick-btn active" data-color="#00ff9d" style="background:#00ff9d" title="Verde — En curso"></button>
+            <button class="color-pick-btn" data-color="#ff3e6c" style="background:#ff3e6c" title="Rojo — Deadline"></button>
+            <button class="color-pick-btn" data-color="#ffd93d" style="background:#ffd93d" title="Amarillo — Importante"></button>
+            <button class="color-pick-btn" data-color="#6c63ff" style="background:#6c63ff" title="Violeta — Planeado"></button>
+            <button class="color-pick-btn" data-color="#00cfff" style="background:#00cfff" title="Azul — Reunión"></button>
+            <button class="color-pick-btn" data-color="#ff9a3c" style="background:#ff9a3c" title="Naranja — Revisión"></button>
+            <button class="color-pick-btn" data-color="#ff69b4" style="background:#ff69b4" title="Rosa — Personal"></button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;" id="color-label">Verde = En curso</div>
+    </div>
+
+    <div class="cal-header">
+        <button class="cal-nav" id="cal-prev">&#9664;</button>
+        <div class="cal-month" id="cal-month-label">---</div>
+        <button class="cal-nav" id="cal-next">&#9654;</button>
+    </div>
+
+    <div class="cal-grid" id="cal-grid"></div>
+
+    <div id="cal-day-events" style="margin-top:16px; display:none;">
+        <div class="sec-title" style="font-size:7px;" id="cal-day-title"></div>
+        <div id="cal-day-events-list"></div>
+    </div>
+</section>
+
+<!-- ===== JAMS TAB ===== -->
+<section class="tab-content" id="tab-jams">
+    <div class="sec-title"><span class="dot"></span> MIS GAME JAMS</div>
+
+    <div class="quick-add" id="jam-form-wrapper">
+        <div class="field-group">
+            <label class="field-label">NOMBRE DE LA JAM</label>
+            <input type="text" id="jam-name" placeholder="ej: GMTK Game Jam 2026">
+        </div>
+        <div class="field-group">
+            <label class="field-label">INICIO</label>
+            <input type="date" id="jam-start">
+        </div>
+        <div class="field-group">
+            <label class="field-label">FIN (DEADLINE — 12:00 AM Bolivia)</label>
+            <input type="date" id="jam-end">
+        </div>
+        <div class="field-group">
+            <label class="field-label">PLATAFORMA / LINK</label>
+            <input type="text" id="jam-link" placeholder="itch.io, ludum dare...">
+        </div>
+        <div class="field-group">
+            <label class="field-label">TEMA DE LA JAM</label>
+            <input type="text" id="jam-theme" placeholder="ej: Caos, Reversión, Espacio...">
+        </div>
+        <div class="field-group">
+            <label class="field-label">NOTAS / IDEA</label>
+            <textarea id="jam-notes" placeholder="Tu idea inicial, mecánica principal, referencias..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btn-add-jam">+ AGREGAR JAM</button>
+            <button class="btn btn-ghost btn-sm" id="btn-toggle-jam-form">▲ CERRAR</button>
+        </div>
+    </div>
+
+    <div id="jam-list" class="jam-list"></div>
+</section>
+
+<!-- ===== TASKS TAB ===== -->
+<section class="tab-content" id="tab-tasks">
+    <div class="sec-title"><span class="dot"></span> CHECKLIST GLOBAL</div>
+
+    <div class="quick-add">
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div style="flex:1;">
+                <label class="field-label">NUEVA TAREA</label>
+                <input type="text" id="task-input" placeholder="ej: Terminar sprite del personaje">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-add-task" style="height:42px;">+</button>
+        </div>
+    </div>
+
+    <ul class="checklist" id="task-list"></ul>
+</section>
+
+<!-- ===== NOTES TAB ===== -->
+<section class="tab-content" id="tab-notes">
+    <div class="sec-title"><span class="dot"></span> NOTAS RÁPIDAS</div>
+
+    <div class="quick-add">
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div style="flex:1;">
+                <label class="field-label">NUEVA NOTA</label>
+                <input type="text" id="note-input" placeholder="ej: Bug en colisiones, revisar...">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-add-note" style="height:42px;">+</button>
+        </div>
+    </div>
+
+    <div class="notes-list" id="notes-list"></div>
+</section>
+
+<!-- ===== STATS TAB ===== -->
+<section class="tab-content" id="tab-stats">
+    <div class="sec-title"><span class="dot"></span> ESTADÍSTICAS</div>
+
+    <div class="stats-grid" id="stats-grid">
+        <div class="stat-box">
+            <span class="stat-number" id="stat-active-jams">0</span>
+            <span class="stat-label">JAMS ACTIVAS</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-number" id="stat-total-jams">0</span>
+            <span class="stat-label">JAMS TOTALES</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-number" id="stat-tasks-done">0</span>
+            <span class="stat-label">TAREAS COMPLETADAS</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-number" id="stat-total-tasks">0</span>
+            <span class="stat-label">TAREAS TOTALES</span>
+        </div>
+    </div>
+
+    <div class="sec-title"><span class="dot"></span> PRÓXIMOS DEADLINES</div>
+    <div id="upcoming-deadlines"></div>
+</section>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+          </html>
